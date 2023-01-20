@@ -8,15 +8,23 @@ st.set_page_config(layout='wide')
 sb = None
 sb_keys = []
 
+def reset_state():
+    st.session_state['streamed_data'] = []
+    st.session_state['attempt_failures'] = 0
+    st.session_state['block_to_start'] = 0
+    st.session_state['run_substream'] = False
+    st.session_state['rank_col'] = 'block'
+
+if bool(st.session_state) is False:
+    reset_state()
+    st.experimental_rerun()
+
 with NamedTemporaryFile(dir='.', suffix='.spkg') as f:
     if "spkg" in st.session_state:
         if st.session_state["spkg"] is not None:
             f.write(st.session_state["spkg"].getbuffer())
             sb = Substream(f.name)
             sb_keys = list(dict.keys(sb.output_modules))
-
-if 'rank_col' not in st.session_state:
-    st.session_state['rank_col'] = None
 
 if 'selected_key' not in st.session_state:
     if len(sb_keys) == 0:
@@ -25,8 +33,6 @@ if 'selected_key' not in st.session_state:
         st.session_state["selected_key"] = sb_keys[0]
 
 spkgFile = None
-def inputSubstream():
-    print(st.session_state["spkg"].getbuffer(), 1)
 
 min_block_number = 0
 if st.session_state["selected_key"] is not None and sb is not None:
@@ -37,38 +43,42 @@ min_block = st.number_input('Start Block', min_value=min_block_number, max_value
 
 max_block = st.number_input('End Block (for now, leave as 20000000 to stream to chain head)', min_value=min_block_number)
             
-st.selectbox("Select Store Key", options=sb_keys, key="selected_key") 
+st.selectbox("Select Module Key", options=sb_keys, key="selected_key") 
 
 if st.session_state["selected_key"] is not None:
-    if 'store' not in st.session_state["selected_key"]:
-        st.write('Not a store module. May have unexpected behavior.')
+    if 'store' in st.session_state["selected_key"]:
+        st.write('Store modules are not supported. May have unexpected behavior.')
 
-spkgFile = st.file_uploader("Input substream .spkg file", type='spkg', key="spkg")
-
+spkgFile = st.file_uploader("Input substream .spkg file", type='spkg', key="spkg", on_change=reset_state)
 
 if st.session_state["selected_key"] is not None and sb is not None:
     def run_substream(max_block, min_block):
-        print(dir(sb))
-        if max_block < min_block:
-            max_block = 20000000
-        result = sb.poll([st.session_state["selected_key"]], start_block=min_block, end_block=max_block)
-        result_dfs = result[0]
-        print(result_dfs.snapshots, result_dfs.data, list(result_dfs.snapshots.columns), list(result_dfs.data.columns), 'dataframes')
-        if list(result_dfs.data.columns):
-            print( type(result_dfs.data))
-            copy_df = result_dfs.data.copy()
-            st.session_state['df'] = copy_df
+        st.session_state['error_message'] = ""
+        st.session_state['attempt_failures'] = 0
+        st.session_state['rank_col'] = 'block'
+        st.session_state['run_substream'] = True
+        st.session_state['min_block'] = min_block
+        st.session_state['streamed_data'] = []
     st.button("Run Substream", on_click=run_substream, args=(max_block, min_block))
 
-if 'df' in st.session_state:
-    if st.session_state['df'].empty is False:
-        if list(st.session_state['df'].columns):
-            st.selectbox("Select Substream Table Sort Column", options=list(st.session_state['df'].columns), key="rank_col") 
+placeholder = st.empty()
+error_message = st.empty()
 
-        copy_df = st.session_state['df'].copy()
+if 'error_message' in st.session_state:
+    if st.session_state['error_message'] != "": 
+        error_message.text(st.session_state['error_message'])
+
+if 'streamed_data' in st.session_state:
+    if len(st.session_state['streamed_data']) > 0:
+        copy_df = pd.DataFrame(st.session_state['streamed_data'])
+        if list(copy_df.columns):
+            st.selectbox("Select Substream Table Sort Column", options=list(copy_df.columns), key="rank_col") 
+
         if st.session_state['rank_col'] is not None:
             copy_df = copy_df.sort_values(by=st.session_state['rank_col'],ascending=False)
-            copy_df.index = range(1, len(copy_df) + 1)
+        copy_df.index = range(1, len(copy_df) + 1)
+        copy_df = copy_df.fillna("")
+
         html_table = '<div class="table-container">' + copy_df[:500].to_html() + '</div>'
         style_css = """
                 <style>
@@ -102,3 +112,43 @@ if 'df' in st.session_state:
                     }
                 </style>"""
         st.markdown(style_css + html_table, unsafe_allow_html=True)
+
+if st.session_state['run_substream'] is True:
+    if 'min_block' in st.session_state:
+        # If min_block is saved in state, override the min_block from the UI input
+        min_block = st.session_state['min_block']
+    if min_block > 0:
+        if max_block < min_block:
+            raise TypeError('`min_block` is greater than `max_block`. This cannot be validly polled.')
+        if max_block == min_block:
+            st.session_state["min_block"] = 0
+            st.session_state['run_substream'] = False
+            st.experimental_rerun()
+        if max_block > min_block and sb is not None:
+            module_name = st.session_state['selected_key']
+            poll_return_obj = {}
+            try:
+                placeholder.text("Loading Substream Results...")
+                poll_return_obj = sb.poll([module_name], start_block=min_block, end_block=max_block, return_first_result=True, return_progress=True)
+                placeholder.empty()
+                if 'error' in poll_return_obj:
+                    raise TypeError(poll_return_obj["error"].debug_error_string() + ' BLOCK: ' + poll_return_obj["data_block"])
+                elif "data" in poll_return_obj:
+                    if (len(poll_return_obj["data"]) > 0):
+                        st.session_state['streamed_data'].extend(poll_return_obj["data"])
+                    st.session_state['min_block'] = int(poll_return_obj["data_block"]) + 1
+            except Exception as err:
+                print("ERROR --- ", err)
+                attempt_failures = st.session_state['attempt_failures']
+                attempt_failures += 1
+                if attempt_failures % 10 == 0:
+                    st.session_state['error_message'] = "ERROR --- " + str(err)
+                    st.session_state['run_substream'] = False
+                    st.session_state["min_block"] = max_block
+                else:
+                    st.session_state["min_block"] = min_block - 100
+                st.session_state['attempt_failures'] = attempt_failures
+            st.experimental_rerun()
+elif 'streamed_data' in st.session_state:
+    if len(st.session_state['streamed_data']) > 0:
+        st.write('Substream Polling Completed') 
