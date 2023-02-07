@@ -126,17 +126,23 @@ if st.session_state['run_substream'] is True:
             st.experimental_rerun()
         if max_block > min_block and sb is not None:
             module_name = st.session_state['selected_key']
-            poll_return_obj = {}
+            poll_return = {}
             try:
                 placeholder.text("Loading Substream Results...")
-                poll_return_obj = sb.poll([module_name], start_block=min_block, end_block=max_block, return_first_result=True, return_progress=True)
+                poll_return = sb.poll(module_name, start_block=min_block, end_block=max_block, return_first_result=True, return_type="dict")
                 placeholder.empty()
-                if 'error' in poll_return_obj:
-                    raise TypeError(poll_return_obj["error"].debug_error_string() + ' BLOCK: ' + poll_return_obj["data_block"])
-                elif "data" in poll_return_obj:
-                    if (len(poll_return_obj["data"]) > 0):
-                        st.session_state['streamed_data'].extend(poll_return_obj["data"])
-                    st.session_state['min_block'] = int(poll_return_obj["data_block"]) + 1
+                if 'error' in poll_return:
+                    if poll_return["error"] is not None:
+                        if "debug_error_string" in dir(poll_return["error"]):
+                            raise TypeError(poll_return["error"].debug_error_string() + ' BLOCK: ' + poll_return["data_block"])
+                        else:
+                            raise TypeError(poll_return["error"] + ' BLOCK: ' + poll_return["data_block"])
+                if 'data_block' in poll_return and int(poll_return["data_block"]) + 1 == max_block:
+                    st.session_state['min_block'] = int(poll_return["data_block"]) + 1
+                elif "data" in poll_return:
+                    if (len(poll_return["data"]) > 0):
+                        st.session_state['streamed_data'].extend(poll_return["data"])
+                    st.session_state['min_block'] = int(poll_return["data_block"]) + 1
             except Exception as err:
                 print("ERROR --- ", err)
                 attempt_failures = st.session_state['attempt_failures']
@@ -145,8 +151,6 @@ if st.session_state['run_substream'] is True:
                     st.session_state['error_message'] = "ERROR --- " + str(err)
                     st.session_state['run_substream'] = False
                     st.session_state["min_block"] = max_block
-                else:
-                    st.session_state["min_block"] = min_block - 100
                 st.session_state['attempt_failures'] = attempt_failures
             st.experimental_rerun()
 elif 'streamed_data' in st.session_state:

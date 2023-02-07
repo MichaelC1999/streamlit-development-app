@@ -15,7 +15,7 @@ _sym_db = _symbol_database.Default()
 import erc20_pb2 as erc20__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x11\x65rc20_price.proto\x12\x16messari.erc20_price.v1\x1a\x0b\x65rc20.proto\"\xe9\x01\n\nErc20Price\x12\x32\n\x05token\x18\x01 \x01(\x0b\x32\x1c.messari.erc20.v1.ERC20TokenR\x05token\x12\x1b\n\tprice_usd\x18\x02 \x01(\tR\x08priceUsd\x12!\n\x0c\x62lock_number\x18\x03 \x01(\x04R\x0b\x62lockNumber\x12\x41\n\x06source\x18\x04 \x01(\x0e\x32).messari.erc20_price.v1.Erc20Price.SourceR\x06source\"$\n\x06Source\x12\x0b\n\x07ORACLES\x10\x00\x12\r\n\tCHAINLINK\x10\x01\"G\n\x0b\x45rc20Prices\x12\x38\n\x05items\x18\x01 \x03(\x0b\x32\".messari.erc20_price.v1.Erc20PriceR\x05itemsb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x11\x65rc20_price.proto\x12\x16messari.erc20_price.v1\x1a\x0b\x65rc20.proto\"\xf6\x01\n\nErc20Price\x12\x32\n\x05token\x18\x01 \x01(\x0b\x32\x1c.messari.erc20.v1.ERC20TokenR\x05token\x12\x1b\n\tprice_usd\x18\x02 \x01(\tR\x08priceUsd\x12!\n\x0c\x62lock_number\x18\x03 \x01(\x04R\x0b\x62lockNumber\x12\x41\n\x06source\x18\x04 \x01(\x0e\x32).messari.erc20_price.v1.Erc20Price.SourceR\x06source\"1\n\x06Source\x12\x0b\n\x07ORACLES\x10\x00\x12\r\n\tCHAINLINK\x10\x01\x12\x0b\n\x07UNISWAP\x10\x02\"G\n\x0b\x45rc20Prices\x12\x38\n\x05items\x18\x01 \x03(\x0b\x32\".messari.erc20_price.v1.Erc20PriceR\x05itemsb\x06proto3')
 
 
 
@@ -40,9 +40,9 @@ if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
   _ERC20PRICE._serialized_start=59
-  _ERC20PRICE._serialized_end=292
+  _ERC20PRICE._serialized_end=305
   _ERC20PRICE_SOURCE._serialized_start=256
-  _ERC20PRICE_SOURCE._serialized_end=292
-  _ERC20PRICES._serialized_start=294
-  _ERC20PRICES._serialized_end=365
+  _ERC20PRICE_SOURCE._serialized_end=305
+  _ERC20PRICES._serialized_start=307
+  _ERC20PRICES._serialized_end=378
 # @@protoc_insertion_point(module_scope)
