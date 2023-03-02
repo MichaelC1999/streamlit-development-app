@@ -1,11 +1,3 @@
-sf
+
 venv
 __pycache__
-common_pb2_grpc.py
-common_pb2.py
-dex_amm_pb2_grpc.py
-dex_amm_pb2.py
-erc20_pb2_grpc.py
-erc20_pb2.py
-uniswap_pb2.py
-uniswap_pb2_grpc.py
